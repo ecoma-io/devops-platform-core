@@ -1,0 +1,7 @@
+{
+  "*.{js,ts,sh,md,yml,yaml,json}": [
+    "prettier --plugin /usr/local/share/npm-global/lib/node_modules/prettier-plugin-sh/lib/index.js --write"
+  ],
+  "*.sh": ["shellcheck -x -f gcc"],
+  "{src|bin|scripts}/**/*.bats": ["bats --pretty --trace"]
+}

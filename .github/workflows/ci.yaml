@@ -1,0 +1,106 @@
+name: Integration
+
+on:
+  push:
+  pull_request:
+
+env:
+  CI: true
+
+jobs:
+  static-checks:
+    name: Static Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run lint
+        shell: bash
+        run: sh lint.sh
+      - name: Run tests
+        shell: bash
+        env:
+          TERM: xterm
+        run: sh test.sh
+
+  integration-checks:
+    name: Integration Checks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        hostname: [master, worker0, worker1, tester]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OS
+        shell: bash
+        run: |
+          sudo modprobe ip_vs
+          sudo modprobe ip_vs_wlc
+          sudo modprobe ip_vs_rr
+          sudo modprobe ip_vs_sh
+          sudo modprobe nf_conntrack
+
+      - name: Run distributed k3s
+        id: k3s-node
+        uses: ecoma-io/devops-action-k3s-distributed@v1.1.0
+        with:
+          ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          ts-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          hostname: ${{ github.run_id }}-${{ matrix.hostname }}
+          k3s-server-extra-args: '--disable=traefik --disable=servicelb --disable=local-storage --disable=coredns --disable=metrics-server --cluster-dns=169.254.20.10 --kube-proxy-arg=proxy-mode=ipvs --kube-proxy-arg=ipvs-scheduler=wlc'
+          k3s-agent-extra-args: '--node-label storage-tier/hot=true --node-label storage-tier/warm=true --node-label storage-tier/cold=true --kube-proxy-arg=proxy-mode=ipvs --kube-proxy-arg=ipvs-scheduler=wlc'
+          worker-count: 2
+
+      - name: Run Integration Tests
+        if: steps.k3s-node.outputs.role == 'tester'
+        shell: bash
+        env:
+          TERM: xterm
+        run: sh e2e.sh
+
+  release:
+    name: Release
+    needs: [integration-checks]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Generate App Token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private_key: ${{ secrets.RELEASE_BOT_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Release
+        uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38
+        id: release-please
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          release-type: go
+
+  report:
+    # Reporting job: always runs (even if previous jobs are skipped/failed)
+    # and sets a GitHub status via an external action.
+    name: Report
+    needs: [static-checks, integration-checks, release]
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Setup project
+        uses: guibranco/github-status-action-v2@latest
+        with:
+          authToken: ${{secrets.GITHUB_TOKEN}}
+          context: ci-completed
+          state: ${{ (needs.static-checks.result != 'failure' && needs.integration-checks.result != 'failure' && needs.release.result != 'failure') && 'success' || 'failure' }}
+          sha: ${{github.event.pull_request.head.sha || github.sha}}

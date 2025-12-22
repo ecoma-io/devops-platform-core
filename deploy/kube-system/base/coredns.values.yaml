@@ -1,0 +1,28 @@
+# REF: https://github.com/coredns/helm/blob/master/charts/coredns/values.yaml
+service:
+  clusterIP: 10.43.0.10
+replicas: 1
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+rollingUpdate:
+  maxUnavailable: 0
+  maxSurge: 25%
+
+prometheus:
+  service:
+    enabled: true
+    annotations:
+      prometheus.io/scrape: 'true'
+      prometheus.io/port: '9153'
+    selector: {}
+  monitor:
+    enabled: true
+    additionalLabels: {}
+    namespace: observability
+    interval: 30s
+    selector: {}
