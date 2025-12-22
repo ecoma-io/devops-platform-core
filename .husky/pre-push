@@ -1,0 +1,5 @@
+#!/bin/sh
+
+sh lint.sh
+sh test.sh
+sh e2e.sh

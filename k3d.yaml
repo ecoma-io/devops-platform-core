@@ -1,0 +1,105 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: devops-platform-core
+servers: 1
+agents: 2
+kubeAPI:
+  hostIP: '0.0.0.0'
+  hostPort: '6443'
+network: 'app-net'
+volumes:
+  - volume: '/workspaces/devops-platform-core:/mnt/local-repo.git'
+    nodeFilters:
+      - 'server:*'
+      - 'agent:*'
+  - volume: '/sys/fs/bpf:/sys/fs/bpf'
+    nodeFilters:
+      - 'server:*'
+      - 'agent:*'
+registries:
+  create:
+    name: registry
+    host: '0.0.0.0'
+    hostPort: '5000'
+  config: |
+    mirrors:
+      "docker.io":
+        endpoint:
+          - "http://registry:5000"
+      "quay.io":
+        endpoint:
+          - "http://registry:5000"
+      "ghcr.io":
+        endpoint:
+          - "http://registry:5000"
+      "gcr.io":
+        endpoint:
+          - "http://registry:5000"
+      "ecr-public.aws.com":
+        endpoint:
+          - "http://registry:5000"
+    configs:
+      "registry:5000":
+        tls:
+          insecure: true
+      default: # if no mirror matches we need to add mirror in above list
+        endpoint:
+          - "http://registry:5000"
+options:
+  k3d:
+    wait: true
+    disableLoadbalancer: true
+  k3s:
+    extraArgs:
+      - arg: --tls-san=0.0.0.0
+        nodeFilters:
+          - 'server:*'
+      - arg: --disable=traefik
+        nodeFilters:
+          - 'server:*'
+      - arg: --disable=servicelb
+        nodeFilters:
+          - 'server:*'
+      - arg: --disable=local-storage
+        nodeFilters:
+          - 'server:*'
+      - arg: --disable=coredns
+        nodeFilters:
+          - 'server:*'
+      - arg: --disable=metrics-server
+        nodeFilters:
+          - 'server:*'
+      - arg: --disable-network-policy
+        nodeFilters:
+          - 'server:*'
+      - arg: --cluster-cidr=10.42.0.0/16
+        nodeFilters:
+          - 'server:*'
+      - arg: --service-cidr=10.43.0.0/16
+        nodeFilters:
+          - 'server:*'
+      - arg: --cluster-dns=169.254.20.10
+        nodeFilters:
+          - 'server:*'
+      - arg: --kube-proxy-arg=proxy-mode=ipvs
+        nodeFilters:
+          - 'server:*'
+          - 'agent:*'
+      - arg: --kube-proxy-arg=ipvs-scheduler=wlc
+        nodeFilters:
+          - 'server:*'
+          - 'agent:*'
+    nodeLabels:
+      - label: storage-tier/hot=true
+        nodeFilters:
+          - 'server:*'
+          - 'agent:*'
+      - label: storage-tier/warm=true
+        nodeFilters:
+          - 'server:*'
+          - 'agent:*'
+      - label: storage-tier/cold=true
+        nodeFilters:
+          - 'server:*'
+          - 'agent:*'
