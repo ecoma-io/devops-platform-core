@@ -1,0 +1,186 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gitops-system
+
+resources:
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.2.1/manifests/install.yaml
+  - default.project.yaml
+
+patches:
+  # REF https://argo-cd.readthedocs.io/en/stable/operator-manual/argocd-cm-yaml/
+  # Enable exec plugin support in Argo CD.
+  # Adding `/data/exec.enabled` as a string so ConfigMap.data remains map[string]string.
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data/exec.enabled
+        value: "true"
+  # REF https://argo-cd.readthedocs.io/en/stable/operator-manual/argocd-cm-yaml/
+  # Configure kustomize build options (enable helm support and relax load restrictor).
+  # Stored as a single string under `/data/kustomize.buildOptions`.
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data/kustomize.buildOptions
+        value: "--enable-helm --load-restrictor LoadRestrictionsNone"
+
+  # REF https://argo-cd.readthedocs.io/en/stable/operator-manual/argocd-cm-yaml/
+  # Gateway API health check was removed because we now use standard Ingress resources
+  # Set safe rolling update strategy and resources for main Argo CD deployments
+  - target:
+      kind: Deployment
+      name: argocd-server
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 0
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+  - target:
+      kind: Deployment
+      name: argocd-repo-server
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 0
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+  - target:
+      kind: StatefulSet
+      name: argocd-application-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+  - target:
+      kind: Deployment
+      name: argocd-applicationset-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+  - target:
+      kind: StatefulSet
+      name: argocd-applicationset-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+  - target:
+      kind: Deployment
+      name: argocd-notifications-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "196Mi"
+  - target:
+      kind: Deployment
+      name: argocd-redis
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "196Mi"
+  - target:
+      kind: Deployment
+      name: argocd-dex-server
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 0
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+  # Add RBAC policy and default role via patch (append to base argocd-rbac-cm)
+  - target:
+      kind: ConfigMap
+      name: argocd-rbac-cm
+    patch: |-
+      - op: add
+        path: /data
+        value: {}
+      - op: add
+        path: /data/policy.csv
+        value: |
+          # Role definitions
+          g, ecoma-io:admin, administrators
+
+          # Admin: full control
+          p, administrators, applications, *, */*, allow
+          p, administrators, clusters, *, *, allow
+          p, administrators, repositories, *, *, allow   
+
+          # Default: read-only access
+          p, viewers, applications, get, */*, allow
+          p, viewers, clusters, *, *, deny
+          p, administrators, repositories, *, *, deny   
+
+          p, viewers, clusters, *, *, deny
+      - op: replace
+        path: /data/policy.default
+        value: viewers

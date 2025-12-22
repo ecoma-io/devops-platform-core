@@ -1,0 +1,8 @@
+resources:
+  - ../base
+
+patches:
+  - target:
+      kind: DaemonSet
+      name: kube-router
+    path: patch-mtu-1200.yaml

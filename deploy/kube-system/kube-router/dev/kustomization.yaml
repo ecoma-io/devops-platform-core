@@ -1,0 +1,3 @@
+resources:
+  - ../base
+# dev uses the base defaults (MTU 1450)

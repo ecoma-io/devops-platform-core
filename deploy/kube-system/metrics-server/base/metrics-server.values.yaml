@@ -1,0 +1,26 @@
+replicas: 1
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+metrics:
+  enabled: true
+
+serviceMonitor:
+  enabled: true
+  additionalLabels: {}
+  interval: 1m
+  scrapeTimeout: 10s
+  metricRelabelings: []
+  relabelings: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

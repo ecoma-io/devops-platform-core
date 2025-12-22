@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-router
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: kube-router
+          args:
+            - --run-router=true
+            - --run-service-proxy=true
+            - --run-firewall=false
+            - --overlay=vxlan
+            - --mtu=1200

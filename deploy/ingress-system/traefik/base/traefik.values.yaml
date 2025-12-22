@@ -1,0 +1,29 @@
+# Default values for traefik.
+globalArguments:
+  - '--log.level=WARN'
+
+resources:
+  requests:
+    cpu: '500m'
+    memory: '128Mi'
+  limits:
+    cpu: '1000m'
+    memory: '256Mi'
+
+deployment:
+  replicas: 2
+
+service:
+  type: NodePort
+
+experimental:
+  kubernetesGateway:
+    enabled: false
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+        topologyKey: kubernetes.io/hostname
