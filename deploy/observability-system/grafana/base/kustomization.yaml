@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: observability-system
+helmCharts:
+  - name: grafana
+    repo: https://grafana.github.io/helm-charts
+    releaseName: grafana
+    version: 8.8.2
+    includeCRDs: false
+    valuesFile: values.yaml

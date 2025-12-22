@@ -1,0 +1,100 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gitops-system
+
+resources:
+  - ../base
+  - resources/argocd-dex-secret.yaml
+
+patches:
+  # Change Domain For Local Development
+  - target:
+      kind: HTTPRoute
+      name: argocd
+    patch: |-
+      - op: add
+        path: /spec/hostnames
+        value:
+          - "argocd.ecoma.io"
+
+  # Enable Kustomize Helm Support
+  # REF https://argo-cd.readthedocs.io/en/stable/operator-manual/argocd-cm-yaml/
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    # Disable Anonymous User Access in Production
+    patch: |-
+      - op: add
+        path: /data/users.anonymous.enabled
+        value: "false"
+  # REF https://argo-cd.readthedocs.io/en/latest/operator-manual/argocd-cmd-params-cm-yaml/
+  - target:
+      kind: ConfigMap
+      name: argocd-cmd-params-cm
+    # Set warning log level to reduce noise in production
+    patch: |-
+      - op: add
+        path: /data
+        value:  
+          "server.insecure": "true"   
+          "server.log.level": "warn"
+          "reposerver.log.level": "warn"
+          "controller.log.level": "warn"
+          "dexserver.log.level": "warn"
+          "applicationsetcontroller.log.level": "warn"
+          "notificationscontroller.log.level" : "warn"
+  - target:
+      kind: ApplicationSet
+    # Use Local Repo for Local Development
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/source/targetRevision
+        value: main
+
+  - target:
+      kind: ApplicationSet
+      name: common
+    patch: |-
+      - op: replace
+        path: /spec/generators/0/git
+        value: 
+          repoURL: https://github.com/ecoma-io/common-infras.git
+          revision: main
+          directories:
+            - path: src/*/prod
+      - op: replace
+        path: /spec/template/spec/source/repoURL
+        value: https://github.com/ecoma-io/common-infras.git
+
+  # Add Argo CD external URL and Dex connector for GitHub (prod)
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data/url
+        value: "https://argocd.ecoma.io"
+
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data/admin.enabled
+        value: "false"
+      - op: add
+        path: /data/dex.config
+        value: |
+          connectors:
+          - type: github
+            id: github
+            name: GitHub
+            config:
+              clientID: Ov23li7HwpjwwJjBFUs9
+              clientSecret: $argocd-dex-secret:github.clientSecret
+              orgs:
+              - name: ecoma-io
+                teams:
+                - admin
+                - devops
+                - core-product

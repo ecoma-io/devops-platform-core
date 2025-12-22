@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../kube-system/coredns/production
+  - ../../kube-system/node-local-dns/production
+  - ../../kube-system/metrics-server/production
+  - ../../ingress-system/traefik/production
+  - ../../gitops-system/argocd/production

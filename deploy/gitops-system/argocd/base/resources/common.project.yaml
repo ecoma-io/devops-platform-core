@@ -1,0 +1,72 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: common
+spec:
+  description: Common infrastructure applications shared platform across projects in ecoma.
+  sourceRepos:
+    - '*'
+  sourceNamespaces:
+    - '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  roles:
+    - name: project-role
+      description: The "project-role" will be applied to the `platform-devops` group.
+      groups:
+        - platform-devops
+      policies:
+        - p, proj:common:project-role, applications, *, *, allow
+  orphanedResources:
+    warn: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: common
+  namespace: gitops-system
+spec:
+  goTemplate: true
+  goTemplateOptions: ['missingkey=error']
+  generators:
+    - git:
+        {}
+        # revision: HEAD
+        # repoURL: https://github.com/ecoma-io/common-infras.git
+        # directories:
+        #   - path: src/*/prod
+  template:
+    metadata:
+      name: '{{ index .path.segments 2 }}'
+      namespace: gitops-system
+      labels:
+        environment: '{{ index .path.segments 3 }}'
+    spec:
+      project: common
+      source:
+        repoURL: ''
+        targetRevision: ''
+        path: '{{ .path.path}}'
+      destination:
+        name: 'in-cluster'
+        namespace: '{{ index .path.segments 1 }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - FailOnSharedResource=true
+          - ApplyOutOfSyncOnly=true
+          - PruneLast=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 1s
+            factor: 2
+            maxDuration: 5m
