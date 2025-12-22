@@ -1,0 +1,29 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: localpv-hot
+  annotations:
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: "hostpath"
+      - name: BasePath
+        value: "/var/localpv/hot"
+      - name: XFSQuota
+        enabled: "true"
+        data:
+          softLimitGrace: "0%"
+          hardLimitGrace: "0%"
+      - name: EXT4Quota
+        enabled: "true"
+        data:
+          softLimitGrace: "0%"
+          hardLimitGrace: "0%"
+    openebs.io/cas-type: local
+provisioner: openebs.io/local
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowedTopologies:
+  - matchLabelExpressions:
+      - key: storage-tier/hot
+        values: ["true"]

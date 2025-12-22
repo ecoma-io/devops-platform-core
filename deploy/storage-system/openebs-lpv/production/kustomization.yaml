@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: storage-system
+resources:
+  - ../base
+  - resources/cold.storageclass.yaml
+  - resources/warm.storageclass.yaml
+  - resources/hot.storageclass.yaml
