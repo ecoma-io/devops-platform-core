@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Format and lint staged and unit tests
+npx --no-install lint-staged || exit $?

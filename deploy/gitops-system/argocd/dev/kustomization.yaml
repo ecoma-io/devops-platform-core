@@ -1,0 +1,78 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gitops-system
+
+resources:
+  - ../base
+  - ingress.yaml
+
+patches:
+  # For dev environment we expose ArgoCD via standard Ingress (traefik)
+
+  # Override reconciliation timeout for dev environment
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data/timeout.reconciliation
+        value: "30s"
+
+  # Dev-friendly argocd command params (map of string values). Kept as /data map.
+  # This enables insecure mode, disables auth and increases log verbosity for debugging.
+  - target:
+      kind: ConfigMap
+      name: argocd-cmd-params-cm
+    patch: |-
+      - op: add
+        path: /data
+        value:
+          "server.insecure": "true"
+          "server.disable.auth": "true"
+          "server.log.level": "debug"
+          "reposerver.log.level": "debug"
+          "controller.log.level": "debug"
+          "dexserver.log.level": "debug"
+          "applicationsetcontroller.log.level": "debug"
+          "notificationscontroller.log.level": "debug"
+
+  # Mount a local repo into argocd-repo-server for local development testing
+  - target:
+      kind: Deployment
+      name: argocd-repo-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value: 
+          name: local-repo
+          hostPath:
+            path: /mnt/local-repo.git
+            type: Directory
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value: 
+          name: local-repo
+          mountPath: /mnt/local-repo.git
+
+  # ApplicationSet `common` patches split for clarity and to reduce merge conflicts.
+  # 1) Add git generator pointing at the local repo for dev clusters.
+  - target:
+      kind: ApplicationSet
+      name: common
+    patch: |-
+      - op: add
+        path: /spec/generators/0/git
+        value: 
+          repoURL: file:///mnt/local-repo.git
+          revision: HEAD
+          directories:
+            - path: src/*/dev
+
+  # 2) Replace the template source repoURL to use the local repo.
+  - target:
+      kind: ApplicationSet
+      name: common
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/source/repoURL
+        value: file:///mnt/local-repo.git
