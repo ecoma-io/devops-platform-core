@@ -1,0 +1,67 @@
+{
+  "name": "Devops Platform Core",
+  "image": "ghcr.io/ecoma-io/devops-devcontainer:2",
+  "runArgs": [
+    "--name",
+    "devops-platform-core",
+    "--privileged",
+    "--volume",
+    "/sys/fs/bpf:/sys/fs/bpf",
+    "--ulimit",
+    "nofile=256536:256536"
+  ],
+  "remoteEnv": {
+    "WORKSPACE_ROOT": "${localWorkspaceFolder}",
+    "PATH": "${containerEnv:PATH}:${localWorkspaceFolder}/scripts"
+  },
+  "appPort": [80, 443],
+  "postCreateCommand": "sh .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "mcp": {
+        "servers": {
+          "filesystem": {
+            "command": "npx",
+            "args": [
+              "-y",
+              "@modelcontextprotocol/server-filesystem",
+              "/workspaces/common-infras"
+            ]
+          },
+          "sequential-thinking": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+          },
+          "git": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["@cyanheads/git-mcp-server@latest"],
+            "env": {
+              "MCP_TRANSPORT_TYPE": "stdio",
+              "MCP_LOG_LEVEL": "info",
+              "LOGS_DIR": "/var/log/git-mcp-server/"
+            }
+          }
+        }
+      },
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "EditorConfig.EditorConfig",
+        "ms-vscode-remote.remote-containers",
+        "exiasr.hadolint",
+        "jetmartin.bats"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "remote.autoForwardPorts": false,
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        }
+      }
+    }
+  }
+}

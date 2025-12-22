@@ -1,0 +1,20 @@
+# REF: https://github.com/openebs/dynamic-localpv-provisioner/blob/v4.4.0/deploy/helm/charts/values.yaml
+
+fullnameOverride: lpv-provisioner
+
+localpv:
+  replicas: 1
+  basePath: '/var/localpv'
+  updateStrategy:
+    type: RollingUpdate
+    maxSurge: 25%
+    maxUnavailable: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 96Mi
+hostpathClass:
+  enabled: false

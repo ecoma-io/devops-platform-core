@@ -1,0 +1,60 @@
+# NodeLocal DNSCache Helm Chart Values
+# Chart: node-local-dns
+# Repository: https://charts.deliveryhero.io/
+# Version: 2.1.1
+
+fullnameOverride: 'dns-cache'
+
+config:
+  # DNS domain
+  dnsDomain: cluster.local
+
+  # Upstream DNS service (CoreDNS)
+  dnsServer: 10.43.0.10
+
+  # Use explicit bind address to avoid conflict with host's port 53
+  bindIp: true
+
+  # Local DNS cache IP address
+  localDns: 169.254.20.10
+
+  # Set communication protocol. Options are `prefer_udp` or `force_tcp`
+  fcommProtocol: 'force_tcp'
+
+  prefetch:
+    enabled: true
+    amount: 10
+    duration: 5s
+    percentage: 20%
+
+# DaemonSet configuration
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 25%
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+serviceMonitor:
+  enabled: true
+  labels: {}
+  path: /metrics
+  honorLabels: false
+  interval: 30s
+  scrapeTimeout: 30s
+  metricRelabelings: []
+  relabelings: []
+  namePrefix: ''
+  prometheusNamespace: observability-system
+
+dashboard:
+  enabled: true
+  namespace: observability-system
+  label: grafana_dashboard
+  annotations: {}

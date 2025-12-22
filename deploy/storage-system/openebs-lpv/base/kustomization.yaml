@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: storage-system
+
+helmCharts:
+  - name: localpv-provisioner
+    repo: https://openebs.github.io/dynamic-localpv-provisioner
+    releaseName: lpv-provisioner
+    version: 4.4.0
+    valuesFile: openebs-lpv.values.yaml
+
+patches:
+  - target:
+      kind: ServiceAccount
+      name: lpv-provisioner
+    patch: |-
+      - op: add
+        path: /metadata/namespace
+        value: storage-system
+  - target:
+      kind: Deployment
+      name: lpv-provisioner
+    patch: |-
+      - op: add
+        path: /metadata/namespace
+        value: storage-system
+  - target:
+      kind: Deployment
+      name: lpv-provisioner
+    patch: |-
+      - op: add
+        path: /spec/template/spec/priorityClassName
+        value: system-cluster-critical

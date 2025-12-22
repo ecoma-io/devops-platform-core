@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-flannel
+  namespace: kube-flannel
+  labels:
+    k8s-app: flannel
+    app.kubernetes.io/name: flannel
+spec:
+  selector:
+    matchLabels:
+      k8s-app: flannel
+      app.kubernetes.io/name: flannel
+  template:
+    metadata:
+      labels:
+        k8s-app: flannel
+        app.kubernetes.io/name: flannel
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      serviceAccountName: flannel
+      initContainers:
+        - name: install-cni-plugins
+          image: alpine:3.18
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              apk add --no-cache curl tar >/dev/null 2>&1 || true
+              mkdir -p /opt/cni/bin
+              curl -fsSL https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz | tar -C /opt/cni/bin -xz
+          volumeMounts:
+            - name: cni-plugin
+              mountPath: /opt/cni/bin
+        - name: install-cni-plugin
+          image: ghcr.io/flannel-io/flannel-cni-plugin:v1.8.0-flannel1
+          command:
+            - cp
+          args:
+            - -f
+            - /flannel
+            - /opt/cni/bin/flannel
+          volumeMounts:
+            - name: cni-plugin
+              mountPath: /opt/cni/bin
+        - name: install-cni
+          image: ghcr.io/flannel-io/flannel:v0.27.4
+          command:
+            - cp
+          args:
+            - -f
+            - /etc/kube-flannel/cni-conf.json
+            - /etc/cni/net.d/10-flannel.conflist
+          volumeMounts:
+            - name: cni
+              mountPath: /etc/cni/net.d
+            - name: flannel-cfg
+              mountPath: /etc/kube-flannel/
+      containers:
+        - name: kube-flannel
+          image: ghcr.io/flannel-io/flannel:v0.27.4
+          command:
+            - /opt/bin/flanneld
+          args:
+            - --ip-masq
+            - --kube-subnet-mgr
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 96Mi
+          securityContext:
+            privileged: false
+            capabilities:
+              add: ['NET_ADMIN', 'NET_RAW']
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: EVENT_QUEUE_DEPTH
+              value: '5000'
+            - name: CONT_WHEN_CACHE_NOT_READY
+              value: 'false'
+          volumeMounts:
+            - name: run
+              mountPath: /run/flannel
+            - name: flannel-cfg
+              mountPath: /etc/kube-flannel/
+            - name: xtables-lock
+              mountPath: /run/xtables.lock
+      volumes:
+        - name: run
+          hostPath:
+            path: /run/flannel
+        - name: cni-plugin
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni
+          hostPath:
+            path: /etc/cni/net.d
+        - name: flannel-cfg
+          configMap:
+            name: kube-flannel-cfg
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
