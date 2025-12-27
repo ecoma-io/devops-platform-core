@@ -8,16 +8,6 @@ metadata:
         value: "hostpath"
       - name: BasePath
         value: "/var/localpv/warm"
-      - name: XFSQuota
-        enabled: "true"
-        data:
-          softLimitGrace: "0%"
-          hardLimitGrace: "0%"
-      - name: EXT4Quota
-        enabled: "true"
-        data:
-          softLimitGrace: "0%"
-          hardLimitGrace: "0%"
     openebs.io/cas-type: local
 provisioner: openebs.io/local
 allowVolumeExpansion: true
@@ -26,4 +16,4 @@ volumeBindingMode: WaitForFirstConsumer
 allowedTopologies:
   - matchLabelExpressions:
       - key: storage-tier/warm
-        values: ["true"]
+        values: ['true']

@@ -3,6 +3,7 @@ kind: StorageClass
 metadata:
   name: localpv-hot
   annotations:
+    openebs.io/cas-type: local
     cas.openebs.io/config: |
       - name: StorageType
         value: "hostpath"
@@ -18,7 +19,6 @@ metadata:
         data:
           softLimitGrace: "0%"
           hardLimitGrace: "0%"
-    openebs.io/cas-type: local
 provisioner: openebs.io/local
 allowVolumeExpansion: true
 reclaimPolicy: Delete
@@ -26,4 +26,4 @@ volumeBindingMode: WaitForFirstConsumer
 allowedTopologies:
   - matchLabelExpressions:
       - key: storage-tier/hot
-        values: ["true"]
+        values: ['true']

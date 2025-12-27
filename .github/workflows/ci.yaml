@@ -34,12 +34,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup IPVS modules
+      - name: Clean up docker and iptables rules
         shell: bash
         run: |
-          sudo modprobe ip_vs
-          sudo modprobe ip_vs_wlc
-          sudo modprobe nf_conntrack
+          sudo systemctl stop docker docker.socket
+          sudo iptables -t nat -F
+          sudo iptables -t mangle -F
+          sudo iptables -F
+          sudo iptables -X
+          sudo iptables -P FORWARD ACCEPT
 
       - name: Run distributed k3s
         id: k3s-node
@@ -48,7 +51,7 @@ jobs:
           ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           ts-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           hostname: ${{ github.run_id }}-${{ matrix.hostname }}
-          k3s-server-extra-args: --disable=traefik --disable=servicelb --disable=local-storage --disable=coredns --disable=metrics-server --cluster-dns=169.254.20.10 --flannel-backend=none --disable-network-policy
+          k3s-server-extra-args: --disable=traefik --disable=servicelb --disable=local-storage --disable=coredns --disable=metrics-server --cluster-dns=169.254.20.10 --flannel-backend=none --disable-network-policy --node-label storage-tier/hot=true --node-label storage-tier/warm=true --node-label storage-tier/cold=true
           k3s-agent-extra-args: --node-label storage-tier/hot=true --node-label storage-tier/warm=true --node-label storage-tier/cold=true
           worker-count: 2
 

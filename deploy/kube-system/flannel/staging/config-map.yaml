@@ -29,7 +29,7 @@ data:
   net-conf.json: |
     {
       "Network": "10.42.0.0/16",
-      "EnableNFTables": false,
+      "EnableNFTables": true,
       "Backend": {
         "Type": "vxlan",
         "MTU": 1230
